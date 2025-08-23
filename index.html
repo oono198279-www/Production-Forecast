@@ -96,6 +96,12 @@
     .switch input[type="checkbox"]{ margin:0; }
     .switch, .switch span{ writing-mode: horizontal-tb; text-orientation: mixed; }
     .switch span{ display:inline-block; white-space: nowrap; }
+    /* 休日列だけ少し右に余白を作る */
+    table thead th:last-child,
+    table tbody td:last-child{
+      padding-right: 12px;   /* 8〜14px お好みで */
+    }/* カードの内側にも少し余白を追加（任意） */
+    .card{ padding-right: 12px; }
   </style>
 </head>
 <body>
