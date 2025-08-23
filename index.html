@@ -43,25 +43,49 @@
     .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .controls > *{flex:0 0 auto}
     .controls .grow{flex:1 1 auto}
-    .switch{display:inline-flex;align-items:center;gap:0.8em;}
-    .switch input[type="checkbox"]{margin:0;}
-
-    @media (max-width:520px){
+    @media (max-width: 520px){
       .grid3{grid-template-columns:1fr}
       .grid2{grid-template-columns:1fr}
-      .controls{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
-      .controls .grow{grid-column:1 / -1;width:100%}
-      .controls .switch{grid-column:1;justify-self:start}
-      .controls .badge{grid-column:2;justify-self:end}
+      .controls{gap:6px}
     }
-        /* チェックボックスとラベル文の間隔を最小化 */
-    .switch input[type="checkbox"] {
-      margin-right: 3px; /* ←好きな値に調整、0でもOK */
-    }/* チェックボックスとラベル文の間隔を約1文字分に */
-    .switch input[type="checkbox"] {
-      margin: 0;             /* ブラウザ標準の余白を消す */
-      margin-right: 0.5em;   /* ← 1文字分弱（だいたい8px前後） */
+    .controls label { display:inline-flex; align-items:center; }
+    .nowrap { white-space:nowrap; min-width:max-content; }
+    /* --- ラベルの1行化＆必要最小幅確保 --- */
+    .controls label { display:inline-flex; align-items:center; }
+    .nowrap { white-space:nowrap; min-width:max-content; }
+
+    /* --- 小さい画面ではコントロール行をグリッド化して中央寄せ --- */
+    @media (max-width: 520px){
+      .controls{
+        display:grid;
+        grid-template-columns: 1fr auto;  /* 左=ボタン/ラベル, 右=バッジ */
+        gap:1px;
+        align-items:center;
+      }
+      .controls .grow{grid-column:1 / -1; width:100%}  /* ボタンは幅いっぱい */
+      .controls .switch{grid-column:1; justify-self:center}
+      .controls .badge{grid-column:2; justify-self:end}
     }
+        /* ラベルは1行で、必要最小幅を確保して崩れない */
+    .controls label { display:inline-flex; align-items:center; }
+    .nowrap { white-space: nowrap; min-width: max-content; }
+    
+    /* 狭い画面では2列グリッドに：左=ラベル、右=バッジ（順序保持） */
+    @media (max-width: 520px){
+      .controls{
+        display: grid;
+        grid-template-columns: 1fr auto;  /* 左=ボタン/ラベル, 右=バッジ */
+        gap: 1px;
+        align-items: center;
+      }
+      .controls .grow{ grid-column: 1 / -1; width:100%; }  /* ボタンは1行占有 */
+      .controls .switch{ grid-column: 1; justify-self: start; }  /* ①③の塊 */
+      .controls .badge{  grid-column: 2; justify-self: end; }    /* ② */
+    }
+    /* ラベル内の間隔＝約1文字分、チェックボックスの既定余白はゼロに統一 */
+    .switch{ display:inline-flex; align-items:center; gap:0.8em; } /* ← 0.5〜1emで好み調整 */
+    .switch input[type="checkbox"]{ margin:0; }
+
   </style>
 </head>
 <body>
