@@ -127,19 +127,22 @@
 
       <label style="margin-top:8px">月産数</label>
       <input id="monthly" type="number" inputmode="decimal" placeholder="10000" step="1" />
-
-      <div class="controls" style="margin-top:8px">
-        <button id="calc" class="grow">計算する</button>
-
-        <!-- ①+③の塊。常に1行で、約1文字分の間隔 -->
-        <label class="switch nowrap">
-          <input id="autoWeekend" type="checkbox" checked>
-          <span>土日を自動で休日にする</span>
+      <div class="controls"
+           style="margin-top:8px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
+        <!-- ボタンは1行占有 -->
+        <button id="calc" class="grow" style="grid-column:1 / -1;width:100%">計算する</button>
+      
+        <!-- ①+③：左寄せ＆1行＆約1文字分の間隔 -->
+        <label class="switch nowrap"
+               style="grid-column:1;justify-self:start;display:inline-flex;align-items:center;gap:0.8em;writing-mode:horizontal-tb;text-orientation:mixed;">
+          <input id="autoWeekend" type="checkbox" checked style="margin:0">
+          <span style="display:inline-block;white-space:nowrap;">土日を自動で休日にする</span>
         </label>
-
-        <!-- ② ステータスバッジ -->
-        <span class="badge" id="status">未計算</span>
+      
+        <!-- ②：右寄せ -->
+        <span class="badge" id="status" style="grid-column:2;justify-self:end">未計算</span>
       </div>
+
 
       <div class="muted" style="font-size:12px;margin-top:4px">
         ・数量表示は <b>#,##0</b>（表示は整数／内部は小数計算）。<br/>
