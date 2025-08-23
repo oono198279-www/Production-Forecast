@@ -44,15 +44,9 @@
     .controls > *{flex:0 0 auto}
     .controls .grow{flex:1 1 auto}
     @media (max-width: 520px){
-      .controls{
-        display:grid;
-        grid-template-columns: 1fr auto;  /* 左=ボタン/ラベル, 右=バッジ */
-        gap:6px;
-        align-items:center;
-      }
-      .controls .grow{grid-column:1 / -1; width:100%}   /* ボタンは幅いっぱいで1行 */
-      .controls .switch{grid-column:1; justify-self:center}
-      .controls .badge{grid-column:2; justify-self:end}
+      .grid3{grid-template-columns:1fr}
+      .grid2{grid-template-columns:1fr}
+      .controls{gap:6px}
     }
     .controls label { display:inline-flex; align-items:center; }
     .nowrap { white-space:nowrap; min-width:max-content; }
