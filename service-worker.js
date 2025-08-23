@@ -1,4 +1,4 @@
-const CACHE_NAME = 'seisan-pwa-v11';
+const CACHE_NAME = 'seisan-pwa-v12';
 const ASSETS = [
   './',
   './index.html',
