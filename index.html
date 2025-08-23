@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>生産予定 PWA</title>
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#22c55e">
+
+  <style>
+    :root { --bg:#0b0f12; --card:#11161a; --fg:#e5e7eb; --muted:#9ca3af; --accent:#22c55e;}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+    header{position:sticky;top:0;background:var(--card);border-bottom:1px solid #1f2937;padding:10px 12px}
+    .wrap{display:flex;justify-content:center}
+    main{width:100%;max-width:560px;margin:0 auto;padding:10px}
+    @media (max-width: 580px){ main{max-width:520px} }
+    @media (max-width: 540px){ main{max-width:480px} }
+    @media (max-width: 500px){ main{max-width:440px} }
+    @media (max-width: 460px){ main{max-width:100%;padding:8px} }
+
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:10px}
+    h1{margin:0;font-size:18px}
+    label{display:block;margin:6px 0 4px;color:var(--muted);font-size:12px}
+    input,select,button{width:100%;padding:10px;border-radius:12px;border:1px solid #26313a;background:#0b0f12;color:#e5e7eb;font-size:14px}
+    button{background:var(--accent);color:#001a08;border:none;font-weight:700;cursor:pointer}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:6px;font-size:13px}
+    colgroup col.date{width:40%} colgroup col.plan{width:20%} colgroup col.cum{width:24%} colgroup col.hol{width:16%}
+    th,td{border-bottom:1px solid #1f2937;padding:4px 8px;text-align:right;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    th:first-child, td:first-child{text-align:left}
+    .hint{color:var(--muted);font-size:12px;margin-top:4px}
+    .muted{color:var(--muted)}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#0b0f12;border:1px solid #26313a;font-size:12px}
+    .flex{display:flex;gap:8px;align-items:center}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .weekend{opacity:0.85}
+    .holiday-row{background:#0e1419}
+    .sticky-foot{position:sticky;bottom:0;background:var(--card);border-top:1px solid #1f2937;padding:8px}
+    .num{font-variant-numeric: tabular-nums}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .controls > *{flex:0 0 auto}
+    .controls .grow{flex:1 1 auto}
+    @media (max-width: 520px){
+      .grid3{grid-template-columns:1fr}
+      .grid2{grid-template-columns:1fr}
+      .controls{gap:6px}
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <main style="padding:0 10px">
+      <h1>生産予定 PWA</h1>
+      <div class="muted" style="font-size:12px">オフライン対応 / 端末ごとに値を保存</div>
+    </main>
+  </header>
+  <div class="wrap">
+  <main>
+    <div class="card">
+      <div class="grid3">
+        <div>
+          <label>年</label>
+          <input id="year" type="number" inputmode="numeric" placeholder="2025" />
+        </div>
+        <div>
+          <label>月</label>
+          <input id="month" type="number" inputmode="numeric" placeholder="8" />
+        </div>
+        <div>
+          <label>棚卸待ち時間（日） 0〜1</label>
+          <input id="downtime" type="number" inputmode="decimal" step="0.1" min="0" max="1" placeholder="0" />
+        </div>
+      </div>
+      <label style="margin-top:8px">月産数</label>
+      <input id="monthly" type="number" inputmode="decimal" placeholder="10000" step="1" />
+      <div class="controls" style="margin-top:8px">
+        <button id="calc" class="grow">計算する</button>
+        <label class="flex" style="gap:6px; white-space:nowrap;"><input id="autoWeekend" type="checkbox" checked>土日を自動で休日にする</label>
+        <span class="badge" id="status">未計算</span>
+      </div>
+      <div class="hint">
+        ・数量表示は <b>#,##0</b>（表示は整数／内部は小数計算）。<br/>
+        ・棚卸待ち時間を設定すると、稼働日数は「稼働日 - 待ち時間」で計算。<br/>
+        ・最初の稼働日は「(1 - 待ち時間)日分」の予定数になります。
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <div class="flex" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <h2 style="margin:0 0 8px;font-size:16px">結果</h2>
+        <div class="muted" id="summary"></div>
+      </div>
+      <table>
+        <colgroup>
+          <col class="date" style="width:110px"><col class="plan" style="width:90px"><col class="cum" style="width:100px"><col class="hol" style="width:60px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>日付</th><th>予定数</th><th>累積</th><th>休日</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="sticky-foot">
+        <div class="flex" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div class="muted">稼働日: <span id="workdays">0</span> 日 / 有効稼働日: <span id="effwork">0</span> 日 / 日産数: <span id="daily" class="num">0</span></div>
+          <button id="reset">この月の保存データを初期化</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+      });
+    }
+
+    const pad = n => String(n).padStart(2,'0');
+    function daysInMonth(y,m){ return new Date(y, m, 0).getDate(); }
+    const fmt0 = new Intl.NumberFormat('ja-JP', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+    function storageKey(y,m){ return `seisan:${y}-${pad(m)}`; }
+    function loadMonth(y,m){
+      try{ const raw = localStorage.getItem(storageKey(y,m)); return raw ? JSON.parse(raw) : null; }
+      catch(e){ return null; }
+    }
+    function saveMonth(y,m,data){
+      try{ localStorage.setItem(storageKey(y,m), JSON.stringify(data)); }
+      catch(e){ console.warn('保存失敗', e); }
+    }
+
+    function calcPlan(year, month, monthly, autoWeekend, overrides, downtime){
+      downtime = clamp(downtime || 0, 0, 1);
+      const nDays = daysInMonth(year, month);
+      const rows = [];
+      let workdays = 0;
+      for(let d=1; d<=nDays; d++){
+        const dt = new Date(year, month-1, d);
+        const iso = `${year}-${pad(month)}-${pad(d)}`;
+        const isWeekend = dt.getDay()===0 || dt.getDay()===6;
+        let holiday = autoWeekend ? isWeekend : false;
+        if(overrides && iso in overrides){ holiday = overrides[iso]; }
+        if(!holiday) workdays++;
+        rows.push({ iso, holiday, planned: 0, cum: 0, weekend:isWeekend });
+      }
+      const effWork = Math.max(0, workdays - downtime);
+      const daily = effWork>0 ? (monthly / effWork) : 0;
+
+      let firstApplied = false;
+      let cum = 0;
+      for(const r of rows){
+        if(r.holiday){
+          r.planned = 0;
+        }else{
+          if(!firstApplied){
+            r.planned = daily * (1 - downtime);
+            firstApplied = true;
+          }else{
+            r.planned = daily;
+          }
+        }
+        cum += r.planned;
+        r.cum = cum;
+      }
+      return { rows, workdays, effWork, daily };
+    }
+
+    const elYear = document.getElementById('year');
+    const elMonth = document.getElementById('month');
+    const elMonthly = document.getElementById('monthly');
+    const elWeekend = document.getElementById('autoWeekend');
+    const elDowntime = document.getElementById('downtime');
+    const elCalc = document.getElementById('calc');
+    const elStatus = document.getElementById('status');
+    const elSummary = document.getElementById('summary');
+    const elBody = document.getElementById('tbody');
+    const elWorkdays = document.getElementById('workdays');
+    const elEffWork = document.getElementById('effwork');
+    const elDaily = document.getElementById('daily');
+    const elReset = document.getElementById('reset');
+
+    (function init(){
+      const now = new Date();
+      elYear.value = now.getFullYear();
+      elMonth.value = now.getMonth()+1;
+      elMonthly.value = '';
+      elDowntime.value = '0';
+      restoreAndRender();
+    })();
+
+    function restoreAndRender(){
+      const y = Number(elYear.value);
+      const m = Number(elMonth.value);
+      const saved = loadMonth(y,m);
+      if(saved){
+        if(saved.monthly != null) elMonthly.value = saved.monthly;
+        if(saved.autoWeekend != null) elWeekend.checked = !!saved.autoWeekend;
+        if(saved.downtime != null) elDowntime.value = saved.downtime;
+      }
+      render();
+    }
+
+    function currentState(){
+      return {
+        year: Number(elYear.value),
+        month: Number(elMonth.value),
+        monthly: Number(elMonthly.value || 0),
+        autoWeekend: elWeekend.checked,
+        downtime: Number(elDowntime.value || 0)
+      };
+    }
+
+    function render(){
+      const {year, month, monthly, autoWeekend, downtime} = currentState();
+      const saved = loadMonth(year, month) || {};
+      const overrides = saved.overrides || {};
+      const { rows, workdays, effWork, daily } = calcPlan(year, month, monthly, autoWeekend, overrides, downtime);
+
+      elSummary.textContent = `${year}-${pad(month)} / 月産 ${fmt0.format(monthly || 0)}`;
+      elWorkdays.textContent = workdays;
+      elEffWork.textContent = (Math.round(effWork*10)/10).toString().replace(/\.0$/, '');
+      elDaily.textContent = fmt0.format(daily);
+
+      elBody.innerHTML = '';
+      for(const r of rows){
+        const tr = document.createElement('tr');
+        if(r.holiday) tr.classList.add('holiday-row');
+        if(r.weekend) tr.classList.add('weekend');
+
+        const tdDate = document.createElement('td');
+        tdDate.textContent = r.iso;
+
+        const tdPlan = document.createElement('td');
+        tdPlan.textContent = fmt0.format(r.planned);
+
+        const tdCum = document.createElement('td');
+        tdCum.textContent = fmt0.format(r.cum);
+
+        const tdHoliday = document.createElement('td');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = r.holiday;
+        cb.addEventListener('change', () => {
+          const saveObj = loadMonth(year, month) || { monthly, autoWeekend, downtime, overrides:{} };
+          saveObj.monthly = Number(elMonthly.value || 0);
+          saveObj.autoWeekend = elWeekend.checked;
+          saveObj.downtime = Number(elDowntime.value || 0);
+          saveObj.overrides = saveObj.overrides || {};
+          saveObj.overrides[r.iso] = cb.checked;
+          saveMonth(year, month, saveObj);
+          render();
+        });
+        tdHoliday.appendChild(cb);
+
+        tr.appendChild(tdDate);
+        tr.appendChild(tdPlan);
+        tr.appendChild(tdCum);
+        tr.appendChild(tdHoliday);
+        elBody.appendChild(tr);
+      }
+
+      const toSave = loadMonth(year, month) || {};
+      toSave.monthly = monthly;
+      toSave.autoWeekend = autoWeekend;
+      toSave.downtime = downtime;
+      toSave.overrides = toSave.overrides || {};
+      saveMonth(year, month, toSave);
+
+      elStatus.textContent = '保存済み';
+    }
+
+    elCalc.addEventListener('click', render);
+    for(const el of [elYear, elMonth]){
+      el.addEventListener('change', () => { elStatus.textContent='未計算'; restoreAndRender(); });
+    }
+    for(const el of [elMonthly, elWeekend, elDowntime]){
+      el.addEventListener('input', () => { elStatus.textContent='未計算'; });
+      el.addEventListener('change', () => { elStatus.textContent='未計算'; });
+    }
+
+    elReset.addEventListener('click', () => {
+      const {year, month} = currentState();
+      localStorage.removeItem(storageKey(year, month));
+      render();
+    });
+  </script>
+</body>
+</html>
