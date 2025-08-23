@@ -48,6 +48,8 @@
       .grid2{grid-template-columns:1fr}
       .controls{gap:6px}
     }
+    .controls label { display:inline-flex; align-items:center; }
+    .nowrap { white-space:nowrap; min-width:max-content; }
   </style>
 </head>
 <body>
@@ -78,7 +80,7 @@
       <input id="monthly" type="number" inputmode="decimal" placeholder="10000" step="1" />
       <div class="controls" style="margin-top:8px">
         <button id="calc" class="grow">計算する</button>
-        <label class="flex" style="gap:6px; white-space:nowrap;"><input id="autoWeekend" type="checkbox" checked>土日を自動で休日にする</label>
+        <label class="flex nowrap" style="gap:6px; white-space:nowrap;"><input id="autoWeekend" type="checkbox" checked>土日を自動で休日にする</label>
         <span class="badge" id="status">未計算</span>
       </div>
       <div class="hint">
