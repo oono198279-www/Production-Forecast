@@ -82,6 +82,10 @@
       .controls .switch{ grid-column: 1; justify-self: start; }  /* ①③の塊 */
       .controls .badge{  grid-column: 2; justify-self: end; }    /* ② */
     }
+        /* チェックボックスとラベル文の間隔を最小化 */
+    .switch input[type="checkbox"] {
+      margin-right: 3px; /* ←好きな値に調整、0でもOK */
+    }
   </style>
 </head>
 <body>
@@ -112,13 +116,10 @@
       <input id="monthly" type="number" inputmode="decimal" placeholder="10000" step="1" />
       <div class="controls" style="margin-top:8px">
         <button id="calc" class="grow">計算する</button>
-
-        <!-- ①+③ を“1つの label”で包む：絶対に分離しない -->
-        <label class="switch nowrap" style="display:inline-flex;align-items:center;gap:6px;">
-          <input id="autoWeekend" type="checkbox" checked>  <!-- ① -->
-          <span>土日を自動で休日にする</span>            <!-- ③ -->
+        <label class="switch nowrap">
+          <input id="autoWeekend" type="checkbox" checked>
+          <span>土日を自動で休日にする</span>
         </label>
-      
         <span class="badge" id="status">未計算</span>        <!-- ② -->
       </div>
       <div class="hint">
