@@ -85,6 +85,10 @@
         /* チェックボックスとラベル文の間隔を最小化 */
     .switch input[type="checkbox"] {
       margin-right: 3px; /* ←好きな値に調整、0でもOK */
+    }/* チェックボックスとラベル文の間隔を約1文字分に */
+    .switch input[type="checkbox"] {
+      margin: 0;             /* ブラウザ標準の余白を消す */
+      margin-right: 0.5em;   /* ← 1文字分弱（だいたい8px前後） */
     }
   </style>
 </head>
