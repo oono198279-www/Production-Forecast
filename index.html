@@ -80,6 +80,22 @@
       .controls .switch { grid-column:1; justify-self:start; }
       .controls .badge  { grid-column:2; justify-self:end; }
     }
+    /* === 最終強制オーバーライド === */
+    .controls{
+      display: grid !important;
+      grid-template-columns: 1fr auto !important;  /* 左=ボタン/スイッチ, 右=バッジ */
+      gap: 6px !important;
+      align-items: center !important;
+    }
+    .controls .grow{ grid-column: 1 / -1 !important; width:100% !important; } /* ボタンは1行占有 */
+    .controls .switch{ grid-column: 1 !important; justify-self: start !important; }
+    .controls .badge { grid-column: 2 !important; justify-self: end !important; }
+    
+    /* スイッチ（チェック＋テキスト）— 横書き＆間隔固定 */
+    .switch{ display:inline-flex; align-items:center; gap:0.8em; }
+    .switch input[type="checkbox"]{ margin:0; }
+    .switch, .switch span{ writing-mode: horizontal-tb; text-orientation: mixed; }
+    .switch span{ display:inline-block; white-space: nowrap; }
   </style>
 </head>
 <body>
