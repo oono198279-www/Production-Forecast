@@ -50,6 +50,22 @@
     }
     .controls label { display:inline-flex; align-items:center; }
     .nowrap { white-space:nowrap; min-width:max-content; }
+    /* --- ラベルの1行化＆必要最小幅確保 --- */
+    .controls label { display:inline-flex; align-items:center; }
+    .nowrap { white-space:nowrap; min-width:max-content; }
+
+    /* --- 小さい画面ではコントロール行をグリッド化して中央寄せ --- */
+    @media (max-width: 520px){
+      .controls{
+        display:grid;
+        grid-template-columns: 1fr auto;  /* 左=ボタン/ラベル, 右=バッジ */
+        gap:6px;
+        align-items:center;
+      }
+      .controls .grow{grid-column:1 / -1; width:100%}  /* ボタンは幅いっぱい */
+      .controls .switch{grid-column:1; justify-self:center}
+      .controls .badge{grid-column:2; justify-self:end}
+    }
   </style>
 </head>
 <body>
