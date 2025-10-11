@@ -2,385 +2,526 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
   <title>生産予定 PWA</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="./manifest.webmanifest">
   <meta name="theme-color" content="#22c55e">
 
   <style>
-    /* ====== Base ====== */
-    :root { --bg:#0b0f12; --card:#11161a; --fg:#e5e7eb; --muted:#9ca3af; --border:#1f2937; --accent:#22c55e; }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial; }
-    header { position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); padding:10px 12px; }
-    .wrap { display:flex; justify-content:center; }
-    main { width:100%; max-width:560px; margin:0 auto; padding:10px; }
-    @media (max-width: 580px){ main{max-width:520px} }
-    @media (max-width: 540px){ main{max-width:480px} }
-    @media (max-width: 500px){ main{max-width:440px} }
-    @media (max-width: 460px){ main{max-width:100%; padding:8px} }
+    :root{ --bg:#0b0f12; --card:#11161a; --fg:#e5e7eb; --muted:#9ca3af; --border:#1f2937; --accent:#22c55e; }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; -webkit-text-size-adjust:100%; }
+    body{ margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial; touch-action: manipulation; }
 
-    /* ====== Cards / Typography ====== */
-    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:10px; }
-    h1 { margin:0; font-size:18px; }
-    h2 { margin:0; font-size:16px; }
-    label { display:block; margin:6px 0 4px; color:var(--muted); font-size:12px; }
-    input, select, button {
-      width:100%; padding:10px; border-radius:12px; border:1px solid #26313a;
-      background:#0b0f12; color:#e5e7eb; font-size:14px;
+    header{ position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--border); z-index: 5; }
+    .wrap{ display:flex; justify-content:center; }
+    main{ width:100%; max-width:560px; margin:0 auto; padding:10px; }
+    @media (max-width:580px){ main{max-width:520px} }
+    @media (max-width:540px){ main{max-width:480px} }
+    @media (max-width:500px){ main{max-width:440px} }
+    @media (max-width:460px){ main{max-width:100%; padding:8px} }
+
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:10px; }
+    h1{ margin:0; font-size:18px; }
+    h2{ margin:0; font-size:16px; }
+    .muted{ color:var(--muted); }
+    .num{ font-variant-numeric: tabular-nums; }
+
+    table{ width:100%; border-collapse:collapse; table-layout:fixed; margin-top:4px; font-size:13px; }
+    th,td{ border-bottom:1px solid var(--border); padding:4px 4px; text-align:right; vertical-align:middle; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    th:first-child,td:first-child{ text-align:left; }
+    .holiday-row{ background:#0e1419; }
+    .weekend{ opacity:0.85; }
+    col.date{ width:110px; }
+    col.plan{ width:90px; }
+    col.cum{ width:100px; }
+    col.hol{ width:60px; }
+
+    .topbar{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .kpis{ display:flex; gap:10px; flex-wrap:wrap; font-size:13px; }
+    .kpis .badge{ background:#0b0f12; border:1px solid #26313a; border-radius:999px; padding:4px 8px; }
+
+    .sticky-foot{ position:sticky; bottom:0; background:var(--card); border-top:1px solid var(--border); padding:8px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    button{ width:auto; padding:10px 14px; border-radius:12px; border:none; background:var(--accent); color:#001a08; font-weight:700; cursor:pointer; touch-action: manipulation; }
+    .ghost{ background:#0b0f12; color:var(--fg); border:1px solid #26313a; }
+
+    /* === モーダル === */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:flex-end; justify-content:center; z-index: 10; }
+    .modal{
+      width:100%; max-width:560px; background:var(--card);
+      border-top-left-radius:14px; border-top-right-radius:14px; border:1px solid var(--border);
+      padding:12px; max-height:85vh; overflow:auto; -webkit-overflow-scrolling: touch;
     }
-    button { background:var(--accent); color:#001a08; border:none; font-weight:700; cursor:pointer; }
+    .modal h3{ margin:0 0 8px; font-size:16px; }
+    .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    label{ display:block; margin:6px 0 4px; color:var(--muted); font-size:12px; }
+    input[type="number"], input[type="text"], input[type="date"], select{
+      width:100%; padding:10px; border-radius:12px; border:1px solid #26313a; background:#0b0f12; color:#e5e7eb; font-size:16px;
+    }
+    .switch{ display:flex; align-items:center; gap:.6em; }
+    .modal-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+    .add-orders{ border:1px dashed #26313a; border-radius:12px; padding:8px; }
 
-    /* ====== Helpers ====== */
-    .muted { color:var(--muted); }
-    .num { font-variant-numeric: tabular-nums; }
-    .flex { display:flex; gap:1px; align-items:center; }
-    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1px; }
-    .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; }
+    /* №見出し + 日付/個数/クリア — 等幅＆見切れ防止 */
+    .add-row{
+      display:grid;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);
+      column-gap:12px;
+      row-gap:8px;
+      align-items:stretch;
+      margin-top:6px;
+      padding-bottom:12px;
+      border-bottom:1px dashed #26313a;
+    }
+    .add-row .rowhead{ grid-column:1 / -1; justify-self:start; color:var(--muted); font-size:12px; }
 
-    /* ====== Controls row ====== */
-    .controls { display:flex; gap:1px; flex-wrap:wrap; align-items:center; }
-    .controls > * { flex:0 0 auto; }
-    .controls .grow { flex:1 1 auto; }
-    .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#0b0f12; border:1px solid #26313a; font-size:12px; }
-    .nowrap { white-space:nowrap; min-width:max-content; }
+    .field{ position:relative; }
+    .field .ph{
+      position:absolute; left:12px; top:50%; transform:translateY(-50%);
+      font-size:12px; color:var(--muted); opacity:.7; pointer-events:none;
+    }
+    .field.has-value .ph{ display:none; }
 
-    /* Switch (checkbox + text) */
-    .switch { display:inline-flex; align-items:center; gap:0.0em; }          /* 約1文字分の間隔 */
-    .switch input[type="checkbox"] { margin:0; }                              /* UA余白リセット */
-    /* iPhone縦組み対策：水平書字を明示 */
-    .switch, .switch span { writing-mode: horizontal-tb; text-orientation: mixed; }
-    .switch span { display:inline-block; white-space:nowrap; }
+    .add-row input, .add-row button{ width:100%; }
+    .add-row input[type="date"]{ text-align:center; }
+    .add-row input[type="number"]{ text-align:right; }
+    .note{ font-size:12px; color:var(--muted); }
 
-    /* ====== Table ====== */
-    table { width:100%; border-collapse:collapse; table-layout:fixed; margin-top:4px; font-size:13px; }
-    th, td { border-bottom:1px solid var(--border); padding:4px 4px; text-align:right; vertical-align:middle; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    th:first-child, td:first-child { text-align:left; }
-    .holiday-row { background:#0e1419; }
-    .weekend { opacity:0.85; }
-    .sticky-foot { position:sticky; bottom:0; background:var(--card); border-top:1px solid var(--border); padding:8px; }
-
-    /* 固定列幅（最大値 999,999 前提） */
-    col.date { width:110px; }
-    col.plan { width:90px; }
-    col.cum  { width:100px; }
-    col.hol  { width:60px; }
-
-    /* ====== Small screen layout ====== */
     @media (max-width:520px){
-      .grid3 { grid-template-columns:1fr; }
-      .grid2 { grid-template-columns:1fr; }
-      .controls {
-        display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center;
-      }
-      .controls .grow { grid-column:1 / -1; width:100%; }  /* ボタンは1行占有 */
-      .controls .switch { grid-column:1; justify-self:start; }
-      .controls .badge  { grid-column:2; justify-self:end; }
+      .grid2, .grid3{ grid-template-columns:1fr; }
     }
-    /* === 最終強制オーバーライド === */
-    .controls{
-      display: grid !important;
-      grid-template-columns: 1fr auto !important;  /* 左=ボタン/スイッチ, 右=バッジ */
-      gap: 6px !important;
-      align-items: center !important;
-    }
-    .controls .grow{ grid-column: 1 / -1 !important; width:100% !important; } /* ボタンは1行占有 */
-    .controls .switch{ grid-column: 1 !important; justify-self: start !important; }
-    .controls .badge { grid-column: 2 !important; justify-self: end !important; }
-    
-    /* スイッチ（チェック＋テキスト）— 横書き＆間隔固定 */
-    .switch{ display:inline-flex; align-items:center; gap:0.8em; }
-    .switch input[type="checkbox"]{ margin:0; }
-    .switch, .switch span{ writing-mode: horizontal-tb; text-orientation: mixed; }
-    .switch span{ display:inline-block; white-space: nowrap; }
-    /* 休日列だけ少し右に余白を作る */
-    table thead th:last-child,
-    table tbody td:last-child{
-      padding-right: 12px;   /* 8〜14px お好みで */
-    }/* カードの内側にも少し余白を追加（任意） */
-    .card{ padding-right: 12px; }
-    /* 休日列のチェックボックスだけ調整 */
-    table thead th:last-child,
-    table tbody td:last-child {
-      width: 70px;           /* 列幅を確保 */
-      text-align: center;    /* 中央寄せ */
-      text-overflow: clip;   /* …を消す */
-      overflow: visible;
-    }
+
+    .scroll-lock{ height:100vh; overflow:hidden; position: fixed; width:100%; }
   </style>
 </head>
 <body>
   <header class="wrap">
-    <main style="padding:0 10px">
-      <h1>生産予定 PWA</h1>
-      <div class="muted" style="font-size:12px">オフライン対応 / 端末ごとに値を保存</div>
+    <main style="padding:10px">
+      <div class="topbar">
+        <div>
+          <h1>生産予定 PWA</h1>
+          <div class="muted" style="font-size:12px">オフライン対応 / 端末ごとに保存</div>
+        </div>
+
+        <div class="kpis" style="flex-wrap: wrap;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="badge" id="kpi-ym">----年 --月</span>
+            <span class="badge">稼働日 <span id="kpi-eff" class="num">0</span> 日</span>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="badge">月産 <span id="kpi-monthly" class="num">0</span></span>
+            <span class="badge">日産 <span id="kpi-daily" class="num">0</span></span>
+          </div>
+        </div>
+      </div>
     </main>
   </header>
 
   <div class="wrap">
-  <main>
-    <!-- ====== Inputs ====== -->
-    <div class="card">
-      <div class="grid3">
-        <div>
-          <label>年</label>
-          <input id="year" type="number" inputmode="numeric" placeholder="2025" />
+    <main>
+      <div class="card">
+        <div class="topbar" style="margin-bottom:6px">
+          <h2>結果</h2>
+          <span class="muted" id="summary"></span>
         </div>
-        <div>
-          <label>月</label>
-          <input id="month" type="number" inputmode="numeric" placeholder="8" />
-        </div>
-        <div>
-          <label>棚卸待ち時間（日） 0.0〜1.0</label>
-          <input id="downtime" type="number" inputmode="decimal" step="0.1" min="0" max="1" placeholder="棚卸し待ち時間を記入してください" />
-        </div>
-      </div>
 
-      <label style="margin-top:8px">月産数</label>
-      <input id="monthly" type="number" inputmode="decimal" placeholder="月産予定数を記入してください" step="1" />
-      <div class="controls"
-           style="margin-top:8px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
-        <!-- ボタンは1行占有 -->
-        <button id="calc" class="grow" style="grid-column:1 / -1;width:100%">計算する</button>
-      
-        <!-- ①+③：左寄せ＆1行＆約1文字分の間隔 -->
-        <label class="switch nowrap"
-               style="grid-column:1;justify-self:start;display:inline-flex;align-items:center;gap:0.8em;writing-mode:horizontal-tb;text-orientation:mixed;">
-          <input id="autoWeekend" type="checkbox" checked style="margin:0">
-          <span style="display:inline-block;white-space:nowrap;">土日を自動で休日にする</span>
-        </label>
-      
-        <!-- ②：右寄せ -->
-        <span class="badge" id="status" style="grid-column:2;justify-self:end">未計算</span>
-      </div>
+        <table>
+          <colgroup><col class="date"><col class="plan"><col class="cum"><col class="hol"></colgroup>
+          <thead><tr><th>日付</th><th>予定数</th><th>累積</th><th>休日</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
 
-
-      <div class="muted" style="font-size:12px;margin-top:4px">
-        ・数量表示は <b>#,##0</b>（表示は整数／内部は小数計算）。<br/>
-        ・稼働日数は「稼働日 − 棚卸待ち時間」で計算。<br/>
-        ・最初の稼働日は「(1 − 待ち時間)日分」の予定数になります。
-      </div>
-    </div>
-
-    <!-- ====== Result ====== -->
-    <div class="card" style="margin-top:10px">
-      <div class="flex" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <h2>結果</h2>
-        <div class="muted" id="summary"></div>
-      </div>
-
-      <table>
-        <colgroup>
-          <col class="date" style="width:110px">
-          <col class="plan" style="width:90px">
-          <col class="cum"  style="width:100px">
-          <col class="hol"  style="width:60px">
-        </colgroup>
-        <thead>
-          <tr>
-            <th>  日付</th><th> 予定数</th><th>累積</th><th>休日　　</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-
-      <div class="sticky-foot">
-        <div class="flex" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div class="sticky-foot">
           <div class="muted">
             稼働日: <span id="workdays">0</span> 日 /
             有効稼働日: <span id="effwork">0</span> 日 /
             日産数: <span id="daily" class="num">0</span>
           </div>
-          <button id="reset">この月の保存データを初期化</button>
+          <div style="display:flex; gap:8px;">
+            <button class="ghost" id="reset">保存を初期化</button>
+            <button id="openSettings">設定</button>
+          </div>
         </div>
       </div>
+
+      <p class="note" style="margin-top:8px">
+        ・棚卸待ち時間は月初の初回稼働日にだけ反映（部分稼働として配分）。<br>
+        ・追加発注は「指定日以降の残稼働重み」で再配分されます。<br>
+        ・休日は表の「休日」列チェックで個別上書きできます。
+      </p>
+    </main>
+  </div>
+
+  <!-- 設定モーダル -->
+  <div class="modal-backdrop" id="backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h3 id="settingsTitle">設定</h3>
+
+      <div class="grid3">
+        <div>
+          <label>年</label>
+          <input id="set-year" type="number" inputmode="numeric" placeholder="2025">
+        </div>
+        <div>
+          <label>月</label>
+          <input id="set-month" type="number" inputmode="numeric" placeholder="10" min="1" max="12">
+        </div>
+        <div>
+          <label>棚卸待ち時間（日）0.0〜1.0</label>
+          <input id="set-downtime" type="number" inputmode="decimal" step="0.1" min="0" max="1">
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:6px">
+        <div>
+          <label>月産数</label>
+          <input id="set-monthly" type="number" inputmode="numeric" step="1" min="0">
+        </div>
+        <div class="switch" style="margin-top:26px">
+          <input id="set-autoWeekend" type="checkbox">
+          <label for="set-autoWeekend" style="margin:0">土日を自動で休日にする</label>
+        </div>
+      </div>
+
+      <div class="add-orders" style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <strong>追加発注<br>（№1〜№5）</strong>
+          <span class="note">日付と個数（±可）。<br>指定日から月末までの予定数に反映</span>
+        </div>
+        <div id="add-wrap"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="ghost" id="cancel">キャンセル</button>
+        <button id="apply">設定完了</button>
+      </div>
     </div>
-  </main>
   </div>
 
   <script>
-    /* ====== PWA ====== */
-    if ('serviceWorker' in navigator) {
+    if('serviceWorker' in navigator){
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js').catch(console.error);
       });
     }
+    document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
 
-    /* ====== Utilities ====== */
     const pad = n => String(n).padStart(2,'0');
-    const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
-    const fmt0 = new Intl.NumberFormat('ja-JP', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const daysInMonth = (y,m) => new Date(y, m, 0).getDate();
+    const fmt0 = new Intl.NumberFormat('ja-JP',{minimumFractionDigits:0, maximumFractionDigits:0});
+    const fmtGroup = new Intl.NumberFormat('ja-JP',{useGrouping:true, maximumFractionDigits:0});
+    const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+    const storageKey = (y,m) => `seisan:${y}-${pad(m)}`;
 
-    const storageKey = (y, m) => `seisan:${y}-${pad(m)}`;
-    const loadMonth = (y, m) => {
-      try { const raw = localStorage.getItem(storageKey(y,m)); return raw ? JSON.parse(raw) : null; }
+    const loadMonth = (y,m)=>{
+      try{ const raw = localStorage.getItem(storageKey(y,m)); return raw? JSON.parse(raw): null; }
       catch(e){ return null; }
     };
-    const saveMonth = (y, m, data) => {
-      try { localStorage.setItem(storageKey(y,m), JSON.stringify(data)); }
+    const saveMonth = (y,m,data)=>{
+      try{ localStorage.setItem(storageKey(y,m), JSON.stringify(data)); }
       catch(e){ console.warn('保存失敗', e); }
     };
 
-    /* ====== Core calc ====== */
-    function calcPlan(year, month, monthly, autoWeekend, overrides, downtime){
-      downtime = clamp(downtime || 0, 0, 1);
+    const elTBody = document.getElementById('tbody');
+    const elWorkdays = document.getElementById('workdays');
+    const elEffWork  = document.getElementById('effwork');
+    const elDaily    = document.getElementById('daily');
+    const elSummary  = document.getElementById('summary');
+    const elReset    = document.getElementById('reset');
+    const elOpenSet  = document.getElementById('openSettings');
+
+    const elKpiYM = document.getElementById('kpi-ym');
+    const elKpiEff= document.getElementById('kpi-eff');
+    const elKpiMon= document.getElementById('kpi-monthly');
+    const elKpiDay= document.getElementById('kpi-daily');
+
+    const backdrop  = document.getElementById('backdrop');
+    const elYear    = document.getElementById('set-year');
+    const elMonth   = document.getElementById('set-month');
+    const elMonthly = document.getElementById('set-monthly');
+    const elDowntime= document.getElementById('set-downtime');
+    const elWeekend = document.getElementById('set-autoWeekend');
+    const elAddWrap = document.getElementById('add-wrap');
+    const elCancel  = document.getElementById('cancel');
+    const elApply   = document.getElementById('apply');
+
+    let state = {
+      year: new Date().getFullYear(),
+      month: new Date().getMonth()+1,
+      monthly: 0,
+      downtime: 0,
+      autoWeekend: true,
+      overrides: {},
+      addOrders: [{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null}],
+    };
+
+    function bindDatePlaceholder(el){
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      el.parentNode.replaceChild(wrap, el);
+      wrap.appendChild(el);
+      const ph = document.createElement('span');
+      ph.className = 'ph';
+      ph.textContent = '日付';
+      wrap.appendChild(ph);
+      const sync = ()=>{
+        if(el.value) wrap.classList.add('has-value'); else wrap.classList.remove('has-value');
+      };
+      el.addEventListener('input', sync);
+      el.addEventListener('change', sync);
+      sync();
+    }
+
+    function openModal(){
+      elYear.value = state.year;
+      elMonth.value = state.month;
+      elMonthly.value = state.monthly || 0;
+      elDowntime.value = state.downtime || 0;
+      elWeekend.checked = !!state.autoWeekend;
+
+      elAddWrap.innerHTML = "";
+      for(let i=0;i<5;i++){
+        const row = document.createElement('div');
+        row.className = 'add-row';
+
+        const head = document.createElement('div');
+        head.className = 'rowhead';
+        head.textContent = `№${i+1}`;
+        row.appendChild(head);
+
+        const date = document.createElement('input');
+        date.type='date';
+        date.id = `add-date-${i}`;
+        date.title = '日付を入力してください';
+        date.setAttribute('aria-label','追加発注の日付');
+
+        const qty  = document.createElement('input');
+        qty.type='number'; qty.step='1';
+        qty.placeholder='個数';
+        qty.id = `add-qty-${i}`;
+
+        const del = document.createElement('button');
+        del.textContent='クリア'; del.className='ghost del';
+        del.addEventListener('click', ()=>{ date.value=''; qty.value=''; date.dispatchEvent(new Event('input')); });
+
+        row.appendChild(date);
+        row.appendChild(qty);
+        row.appendChild(del);
+        elAddWrap.appendChild(row);
+
+        // inline placeholder for date
+        bindDatePlaceholder(date);
+
+        const ent = state.addOrders[i] || {date:"", qty:null};
+        if(ent.date) date.value = ent.date;
+        if(ent.qty!=null) qty.value = ent.qty;
+        date.dispatchEvent(new Event('input'));
+      }
+
+      backdrop.style.display = 'flex';
+      backdrop.setAttribute('aria-hidden','false');
+      document.documentElement.classList.add('scroll-lock');
+      document.body.classList.add('scroll-lock');
+    }
+    function closeModal(){
+      backdrop.style.display = 'none';
+      backdrop.setAttribute('aria-hidden','true');
+      document.documentElement.classList.remove('scroll-lock');
+      document.body.classList.remove('scroll-lock');
+    }
+
+    const fmtInt = (v)=>Math.round(v);
+
+    function daysInMonthJS(y,m){ return new Date(y, m, 0).getDate(); }
+
+    function buildRows(year, month){
       const nDays = daysInMonth(year, month);
       const rows = [];
-      let workdays = 0;
-
       for(let d=1; d<=nDays; d++){
         const dt = new Date(year, month-1, d);
         const iso = `${year}-${pad(month)}-${pad(d)}`;
         const isWeekend = dt.getDay()===0 || dt.getDay()===6;
-        let holiday = autoWeekend ? isWeekend : false;
-        if(overrides && iso in overrides){ holiday = !!overrides[iso]; }
-        if(!holiday) workdays++;
-        rows.push({ iso, holiday, planned: 0, cum: 0, weekend:isWeekend });
-      }
-
-      const effWork = Math.max(0, workdays - downtime);
-      const daily = effWork>0 ? (monthly / effWork) : 0;
-
-      let firstApplied = false;
-      let cum = 0;
-      for(const r of rows){
-        if(r.holiday){
-          r.planned = 0;
-        }else{
-          if(!firstApplied){
-            r.planned = daily * (1 - downtime);  // 初日だけ (1-待ち)日分
-            firstApplied = true;
-          }else{
-            r.planned = daily;
-          }
+        let holiday = state.autoWeekend ? isWeekend : false;
+        if(Object.prototype.hasOwnProperty.call(state.overrides, iso)){
+          holiday = !!state.overrides[iso];
         }
-        cum += r.planned;
-        r.cum = cum;
+        rows.push({ iso, weekend:isWeekend, holiday, planned:0, cum:0, weight:0 });
       }
-      return { rows, workdays, effWork, daily };
-    }
 
-    /* ====== Elements ====== */
-    const elYear    = document.getElementById('year');
-    const elMonth   = document.getElementById('month');
-    const elMonthly = document.getElementById('monthly');
-    const elWeekend = document.getElementById('autoWeekend');
-    const elDowntime= document.getElementById('downtime');
-    const elCalc    = document.getElementById('calc');
-    const elStatus  = document.getElementById('status');
-    const elSummary = document.getElementById('summary');
-    const elBody    = document.getElementById('tbody');
-    const elWorkdays= document.getElementById('workdays');
-    const elEffWork = document.getElementById('effwork');
-    const elDaily   = document.getElementById('daily');
-    const elReset   = document.getElementById('reset');
-
-    /* ====== Init ====== */
-    (function init(){
-      const now = new Date();
-      elYear.value = now.getFullYear();
-      elMonth.value = now.getMonth()+1;
-      elMonthly.value = '';
-      elDowntime.value = '0';
-      restoreAndRender();
-    })();
-
-    function restoreAndRender(){
-      const y = Number(elYear.value);
-      const m = Number(elMonth.value);
-      const saved = loadMonth(y,m);
-      if(saved){
-        if(saved.monthly != null) elMonthly.value = saved.monthly;
-        if(saved.autoWeekend != null) elWeekend.checked = !!saved.autoWeekend;
-        if(saved.downtime != null) elDowntime.value = saved.downtime;
+      let firstWork = true;
+      for(const r of rows){
+        if(r.holiday){ r.weight = 0; continue; }
+        if(firstWork){ r.weight = Math.max(0, 1 - clamp(state.downtime||0,0,1)); firstWork = false; }
+        else{ r.weight = 1; }
       }
-      render();
+      const effWork = rows.reduce((s,r)=>s+r.weight,0);
+      const workdays = rows.filter(r=>!r.holiday).length;
+
+      const adds = (state.addOrders||[])
+        .filter(a=>a && a.date && a.date.length===10 && !isNaN(Number(a.qty)))
+        .map(a=>({date:a.date, qty:Number(a.qty)}))
+        .sort((a,b)=>a.date.localeCompare(b.date));
+
+      let produced = 0;
+      for(let i=0; i<rows.length; i++){
+        const r = rows[i];
+        const remainingWeight = rows.slice(i).reduce((s,rr)=>s+rr.weight,0);
+        const addActive = adds.reduce((s,a)=> s + (a.date <= r.iso ? a.qty : 0), 0);
+        const targetActive = (state.monthly||0) + addActive;
+        const remainingQty = Math.max(0, targetActive - produced);
+
+        let todays = 0;
+        if(!r.holiday && remainingWeight > 0){
+          todays = remainingQty * (r.weight / remainingWeight);
+        }
+        produced += todays;
+        r.planned = todays;
+        r.cum = produced;
+      }
+
+      const totalAdds = adds.reduce((s,a)=>s+a.qty,0);
+      const totalMonthly = (state.monthly||0) + totalAdds;
+      let lastWorkingPlanned = 0;
+      for(let i=rows.length-1;i>=0;i--){
+        if(!rows[i].holiday){ lastWorkingPlanned = Math.round(rows[i].planned); break; }
+      }
+      const dailyNominal = lastWorkingPlanned;
+
+      return { rows, workdays, effWork, totalMonthly, dailyNominal, totalAdds };
     }
 
-    function currentState(){
-      return {
-        year: Number(elYear.value),
-        month: Number(elMonth.value),
-        monthly: Number(elMonthly.value || 0),
-        autoWeekend: elWeekend.checked,
-        downtime: Number(elDowntime.value || 0)
-      };
-    }
-
-    /* ====== Render ====== */
     function render(){
-      const {year, month, monthly, autoWeekend, downtime} = currentState();
-      const saved = loadMonth(year, month) || {};
-      const overrides = saved.overrides || {};
+      const {rows, workdays, effWork, totalMonthly, dailyNominal, totalAdds} = buildRows(state.year, state.month);
 
-      const { rows, workdays, effWork, daily } = calcPlan(year, month, monthly, autoWeekend, overrides, downtime);
-
-      elSummary.textContent = `${year}-${pad(month)} / 月産 ${fmt0.format(monthly || 0)}`;
-      elWorkdays.textContent = workdays;
-      elEffWork.textContent = (Math.round(effWork*10)/10).toString().replace(/\.0$/, '');
-      elDaily.textContent = fmt0.format(daily);
-
-      elBody.innerHTML = '';
+      elTBody.innerHTML = "";
       for(const r of rows){
         const tr = document.createElement('tr');
         if(r.holiday) tr.classList.add('holiday-row');
         if(r.weekend) tr.classList.add('weekend');
 
         const tdDate = document.createElement('td'); tdDate.textContent = r.iso;
-        const tdPlan = document.createElement('td'); tdPlan.textContent = fmt0.format(r.planned);
-        const tdCum  = document.createElement('td'); tdCum.textContent  = fmt0.format(r.cum);
 
-        const tdHoliday = document.createElement('td');
+        const tdPlan = document.createElement('td');
+        const rounded = Math.round(r.planned);
+        tdPlan.textContent = (rounded === 0) ? "" : fmtGroup.format(rounded);
+
+        const tdCum  = document.createElement('td'); tdCum.textContent  = fmt0.format(Math.round(r.cum));
+
+        const tdHol  = document.createElement('td');
         const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = r.holiday;
-        cb.addEventListener('change', () => {
-          const saveObj = loadMonth(year, month) || { monthly, autoWeekend, downtime, overrides:{} };
-          saveObj.monthly = Number(elMonthly.value || 0);
-          saveObj.autoWeekend = elWeekend.checked;
-          saveObj.downtime = Number(elDowntime.value || 0);
-          saveObj.overrides = saveObj.overrides || {};
-          saveObj.overrides[r.iso] = cb.checked;
-          saveMonth(year, month, saveObj);
-          render();
+        cb.type='checkbox'; cb.checked = r.holiday;
+        cb.addEventListener('change', ()=>{
+          state.overrides[r.iso] = cb.checked;
+          persist(); render();
         });
-        tdHoliday.appendChild(cb);
+        tdHol.appendChild(cb);
 
         tr.appendChild(tdDate);
         tr.appendChild(tdPlan);
         tr.appendChild(tdCum);
-        tr.appendChild(tdHoliday);
-        elBody.appendChild(tr);
+        tr.appendChild(tdHol);
+        elTBody.appendChild(tr);
       }
 
-      const toSave = loadMonth(year, month) || {};
-      toSave.monthly = monthly;
-      toSave.autoWeekend = autoWeekend;
-      toSave.downtime = downtime;
-      toSave.overrides = toSave.overrides || {};
-      saveMonth(year, month, toSave);
+      const ym = `${state.year}年 ${state.month}月`;
+      document.getElementById('kpi-ym').textContent = ym;
+      document.getElementById('kpi-eff').textContent = (Math.round(effWork*10)/10).toString().replace(/\.0$/,'');
+      document.getElementById('kpi-monthly').textContent = fmt0.format(totalMonthly);
+      document.getElementById('kpi-daily').textContent = fmt0.format(dailyNominal);
+      elWorkdays.textContent = workdays;
+      elEffWork.textContent  = (Math.round(effWork*10)/10).toString().replace(/\.0$/,'');
+      elDaily.textContent    = fmt0.format(dailyNominal);
 
-      elStatus.textContent = '保存済み';
+      const base = state.monthly||0;
+      const addSign = totalAdds>=0?"+":"";
+
+      elSummary.textContent = `月産 ${fmt0.format(base)} ${addSign}${fmt0.format(totalAdds)} = 合計 ${fmt0.format(base + totalAdds)}`;
+
+      persist();
     }
 
-    /* ====== Events ====== */
-    elCalc.addEventListener('click', render);
-    for(const el of [elYear, elMonth]){
-      el.addEventListener('change', () => { elStatus.textContent='未計算'; restoreAndRender(); });
-    }
-    for(const el of [elMonthly, elWeekend, elDowntime]){
-      el.addEventListener('input', () => { elStatus.textContent='未計算'; });
-      el.addEventListener('change', () => { elStatus.textContent='未計算'; });
+    function persist(){
+      const saved = loadMonth(state.year, state.month) || {};
+      saved.monthly = state.monthly||0;
+      saved.autoWeekend = !!state.autoWeekend;
+      saved.downtime = Number(state.downtime||0);
+      saved.overrides = state.overrides || {};
+      saved.addOrders = state.addOrders || [];
+      saveMonth(state.year, state.month, saved);
     }
 
-    elReset.addEventListener('click', () => {
-      const {year, month} = currentState();
-      localStorage.removeItem(storageKey(year, month));
+    function restore(y,m){
+      const saved = loadMonth(y,m);
+      if(saved){
+        state.monthly = Number(saved.monthly||0);
+        state.autoWeekend = !!saved.autoWeekend;
+        state.downtime = Number(saved.downtime||0);
+        state.overrides = saved.overrides||{};
+        const arr = Array.isArray(saved.addOrders)? saved.addOrders.slice(0,5): [];
+        while(arr.length<5) arr.push({date:"", qty:null});
+        state.addOrders = arr;
+      }else{
+        state.monthly = 0; state.autoWeekend = true; state.downtime = 0; state.overrides = {};
+        state.addOrders = [{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null}];
+      }
+    }
+
+    (function init(){
+      const now = new Date();
+      state.year = now.getFullYear();
+      state.month = now.getMonth()+1;
+      restore(state.year, state.month);
       render();
+    })();
+
+    elOpenSet.addEventListener('click', ()=>{ openModal(); });
+    elCancel.addEventListener('click', ()=> closeModal());
+
+    elApply.addEventListener('click', ()=>{
+      const ny = Number(document.getElementById('set-year').value||state.year);
+      const nm = Number(document.getElementById('set-month').value||state.month);
+      const changedMonth = (ny!==state.year) || (nm!==state.month);
+
+      state.year = Math.max(1970, Math.min(9999, ny));
+      state.month = Math.max(1, Math.min(12, nm));
+      state.monthly = Number(document.getElementById('set-monthly').value||0);
+      state.downtime = Math.max(0, Math.min(1, Number(document.getElementById('set-downtime').value||0)));
+      state.autoWeekend = !!document.getElementById('set-autoWeekend').checked;
+
+      const arr = [];
+      for(let i=0;i<5;i++){
+        const d = document.getElementById(`add-date-${i}`).value;
+        const qv= document.getElementById(`add-qty-${i}`).value;
+        if(d && qv!==""){
+          arr.push({date:d.replaceAll('/','-'), qty:Number(qv)});
+        }else{
+          arr.push({date:"", qty:null});
+        }
+      }
+      state.addOrders = arr;
+
+      if(changedMonth){
+        restore(state.year, state.month);
+        state.monthly = Number(document.getElementById('set-monthly').value||0);
+        state.downtime = Math.max(0, Math.min(1, Number(document.getElementById('set-downtime').value||0)));
+        state.autoWeekend = !!document.getElementById('set-autoWeekend').checked;
+        state.addOrders = arr;
+      }
+
+      closeModal();
+      render();
+    });
+
+    elReset.addEventListener('click', ()=>{
+      localStorage.removeItem(storageKey(state.year, state.month));
+      restore(state.year, state.month);
+      render();
+    });
+
+    backdrop.addEventListener('click', (e)=>{
+      if(e.target === backdrop) closeModal();
     });
   </script>
 </body>
