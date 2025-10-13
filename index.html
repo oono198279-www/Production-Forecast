@@ -64,7 +64,6 @@
     .modal-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
     .add-orders{ border:1px dashed #26313a; border-radius:12px; padding:8px; }
 
-    /* №見出し + 日付/個数/クリア — 等幅＆見切れ防止 */
     .add-row{
       display:grid;
       grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);
@@ -111,7 +110,9 @@
             <span class="badge">稼働日 <span id="kpi-eff" class="num">0</span> 日</span>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <!-- 月産は総量（割る前） -->
             <span class="badge">月産 <span id="kpi-monthly" class="num">0</span></span>
+            <!-- 日産は台当たり（表と整合） -->
             <span class="badge">日産 <span id="kpi-daily" class="num">0</span></span>
           </div>
         </div>
@@ -149,7 +150,8 @@
       <p class="note" style="margin-top:8px">
         ・棚卸待ち時間は月初の初回稼働日にだけ反映（部分稼働として配分）。<br>
         ・追加発注は「指定日以降の残稼働重み」で再配分されます。<br>
-        ・休日は表の「休日」列チェックで個別上書きできます。
+        ・休日は表の「休日」列チェックで個別上書きできます。<br>
+        ・表の予定数／累積は<b>台当たり</b>の値です。
       </p>
     </main>
   </div>
@@ -179,15 +181,22 @@
         </div>
       </div>
 
+      <!-- 月産数と設備台数を同じ段に -->
       <div class="grid2" style="margin-top:6px">
         <div>
-          <label>月産数</label>
+          <label>月産数（総量）</label>
           <input id="set-monthly" type="number" inputmode="numeric" step="1" min="0">
         </div>
-        <div class="switch" style="margin-top:26px">
-          <input id="set-autoWeekend" type="checkbox">
-          <label for="set-autoWeekend" style="margin:0">土日を自動で休日にする</label>
+        <div>
+          <label>設備台数</label>
+          <input id="set-equip" type="number" inputmode="numeric" step="1" min="1" placeholder="1">
         </div>
+      </div>
+
+      <!-- 週末自動休日は1行で -->
+      <div class="switch" style="margin-top:10px">
+        <input id="set-autoWeekend" type="checkbox">
+        <label for="set-autoWeekend" style="margin:0">土日を自動で休日にする</label>
       </div>
 
       <div class="add-orders" style="margin-top:10px">
@@ -243,6 +252,7 @@
     const elMonth   = document.getElementById('set-month');
     const elMonthly = document.getElementById('set-monthly');
     const elDowntime= document.getElementById('set-downtime');
+    const elEquip   = document.getElementById('set-equip');
     const elWeekend = document.getElementById('set-autoWeekend');
     const elAddWrap = document.getElementById('add-wrap');
     const elCancel  = document.getElementById('cancel');
@@ -253,6 +263,7 @@
       month: new Date().getMonth()+1,
       monthly: 0,
       downtime: 0,
+      equip: 1,            // ★ 追加
       autoWeekend: true,
       overrides: {},
       addOrders: [{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null}],
@@ -280,6 +291,7 @@
       elMonth.value = state.month;
       elMonthly.value = state.monthly || 0;
       elDowntime.value = state.downtime || 0;
+      elEquip.value = state.equip || 1;
       elWeekend.checked = !!state.autoWeekend;
 
       elAddWrap.innerHTML = "";
@@ -312,7 +324,6 @@
         row.appendChild(del);
         elAddWrap.appendChild(row);
 
-        // inline placeholder for date
         bindDatePlaceholder(date);
 
         const ent = state.addOrders[i] || {date:"", qty:null};
@@ -332,10 +343,6 @@
       document.documentElement.classList.remove('scroll-lock');
       document.body.classList.remove('scroll-lock');
     }
-
-    const fmtInt = (v)=>Math.round(v);
-
-    function daysInMonthJS(y,m){ return new Date(y, m, 0).getDate(); }
 
     function buildRows(year, month){
       const nDays = daysInMonth(year, month);
@@ -365,12 +372,15 @@
         .map(a=>({date:a.date, qty:Number(a.qty)}))
         .sort((a,b)=>a.date.localeCompare(b.date));
 
+      const equip = Math.max(1, Number(state.equip||1)); // ★ clamp
+
+      // 以降は台当たりで配分
       let produced = 0;
       for(let i=0; i<rows.length; i++){
         const r = rows[i];
         const remainingWeight = rows.slice(i).reduce((s,rr)=>s+rr.weight,0);
         const addActive = adds.reduce((s,a)=> s + (a.date <= r.iso ? a.qty : 0), 0);
-        const targetActive = (state.monthly||0) + addActive;
+        const targetActive = ((state.monthly||0) + addActive) / equip; // ★ 台当たり
         const remainingQty = Math.max(0, targetActive - produced);
 
         let todays = 0;
@@ -383,18 +393,22 @@
       }
 
       const totalAdds = adds.reduce((s,a)=>s+a.qty,0);
-      const totalMonthly = (state.monthly||0) + totalAdds;
+      const totalMonthlyGross = (state.monthly||0) + totalAdds;   // 総量
+      const totalMonthlyPerEq = totalMonthlyGross / Math.max(1, Number(state.equip||1)); // 台当たり
       let lastWorkingPlanned = 0;
       for(let i=rows.length-1;i>=0;i--){
         if(!rows[i].holiday){ lastWorkingPlanned = Math.round(rows[i].planned); break; }
       }
-      const dailyNominal = lastWorkingPlanned;
+      // ...末尾付近
+      const dailyNominal = lastWorkingPlanned;              // 台当たり
+      const dailyNominalGross = dailyNominal * equip;       // ★ 総量を追加
 
-      return { rows, workdays, effWork, totalMonthly, dailyNominal, totalAdds };
-    }
-
+      return { rows, workdays, effWork, totalMonthlyGross, totalMonthlyPerEq,
+           dailyNominal, dailyNominalGross, totalAdds, equip };
+      }
     function render(){
-      const {rows, workdays, effWork, totalMonthly, dailyNominal, totalAdds} = buildRows(state.year, state.month);
+      const {rows, workdays, effWork, totalMonthlyGross, totalMonthlyPerEq,
+                  dailyNominal, dailyNominalGross, totalAdds, equip} = buildRows(state.year, state.month);
 
       elTBody.innerHTML = "";
       for(const r of rows){
@@ -429,25 +443,39 @@
       const ym = `${state.year}年 ${state.month}月`;
       document.getElementById('kpi-ym').textContent = ym;
       document.getElementById('kpi-eff').textContent = (Math.round(effWork*10)/10).toString().replace(/\.0$/,'');
-      document.getElementById('kpi-monthly').textContent = fmt0.format(totalMonthly);
-      document.getElementById('kpi-daily').textContent = fmt0.format(dailyNominal);
+
+      // 月産KPIは総量
+      document.getElementById('kpi-monthly').textContent = fmt0.format(totalMonthlyGross);
+      // 日産KPIは「総量」に変更（←以前は dailyNominal = 台当たり）
+      document.getElementById('kpi-daily').textContent   = fmt0.format(dailyNominalGross);
+
       elWorkdays.textContent = workdays;
       elEffWork.textContent  = (Math.round(effWork*10)/10).toString().replace(/\.0$/,'');
       elDaily.textContent    = fmt0.format(dailyNominal);
 
-      const base = state.monthly||0;
-      const addSign = totalAdds>=0?"+":"";
+      // 結果表示：総量の式と台当たり結果を併記
+      const base = state.monthly || 0;
+      const addSign = totalAdds >= 0 ? "+" : "";
+      
+      // ★ 表示内容を条件分岐
+      if (equip > 1) {
+        elSummary.innerHTML =
+          `月産 (${fmt0.format(base)}${addSign}${fmt0.format(totalAdds)}) ÷ ${equip} = ${fmt0.format(base + totalAdds)}<br>` +
+          `1台あたり ${fmt0.format(totalMonthlyPerEq)}`;
+      } else {
+        elSummary.textContent =
+          `月産 ${fmt0.format(base)} ${addSign}${fmt0.format(totalAdds)} = 合計 ${fmt0.format(base + totalAdds)}`;
+      }
 
-      elSummary.textContent = `月産 ${fmt0.format(base)} ${addSign}${fmt0.format(totalAdds)} = 合計 ${fmt0.format(base + totalAdds)}`;
-
-      persist();
+      persist(); 
     }
-
+    
     function persist(){
       const saved = loadMonth(state.year, state.month) || {};
       saved.monthly = state.monthly||0;
       saved.autoWeekend = !!state.autoWeekend;
       saved.downtime = Number(state.downtime||0);
+      saved.equip = Math.max(1, Number(state.equip||1)); // ★ 保存
       saved.overrides = state.overrides || {};
       saved.addOrders = state.addOrders || [];
       saveMonth(state.year, state.month, saved);
@@ -459,12 +487,14 @@
         state.monthly = Number(saved.monthly||0);
         state.autoWeekend = !!saved.autoWeekend;
         state.downtime = Number(saved.downtime||0);
+        state.equip = Math.max(1, Number(saved.equip||1));
         state.overrides = saved.overrides||{};
         const arr = Array.isArray(saved.addOrders)? saved.addOrders.slice(0,5): [];
         while(arr.length<5) arr.push({date:"", qty:null});
         state.addOrders = arr;
       }else{
-        state.monthly = 0; state.autoWeekend = true; state.downtime = 0; state.overrides = {};
+        state.monthly = 0; state.autoWeekend = true; state.downtime = 0; state.equip = 1;
+        state.overrides = {};
         state.addOrders = [{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null},{date:"",qty:null}];
       }
     }
@@ -477,10 +507,10 @@
       render();
     })();
 
-    elOpenSet.addEventListener('click', ()=>{ openModal(); });
-    elCancel.addEventListener('click', ()=> closeModal());
+    document.getElementById('openSettings').addEventListener('click', ()=>{ openModal(); });
+    document.getElementById('cancel').addEventListener('click', ()=> closeModal());
 
-    elApply.addEventListener('click', ()=>{
+    document.getElementById('apply').addEventListener('click', ()=>{
       const ny = Number(document.getElementById('set-year').value||state.year);
       const nm = Number(document.getElementById('set-month').value||state.month);
       const changedMonth = (ny!==state.year) || (nm!==state.month);
@@ -489,6 +519,7 @@
       state.month = Math.max(1, Math.min(12, nm));
       state.monthly = Number(document.getElementById('set-monthly').value||0);
       state.downtime = Math.max(0, Math.min(1, Number(document.getElementById('set-downtime').value||0)));
+      state.equip = Math.max(1, Number(document.getElementById('set-equip').value||1)); // ★ 反映
       state.autoWeekend = !!document.getElementById('set-autoWeekend').checked;
 
       const arr = [];
@@ -507,6 +538,7 @@
         restore(state.year, state.month);
         state.monthly = Number(document.getElementById('set-monthly').value||0);
         state.downtime = Math.max(0, Math.min(1, Number(document.getElementById('set-downtime').value||0)));
+        state.equip = Math.max(1, Number(document.getElementById('set-equip').value||1));
         state.autoWeekend = !!document.getElementById('set-autoWeekend').checked;
         state.addOrders = arr;
       }
@@ -515,7 +547,7 @@
       render();
     });
 
-    elReset.addEventListener('click', ()=>{
+    document.getElementById('reset').addEventListener('click', ()=>{
       localStorage.removeItem(storageKey(state.year, state.month));
       restore(state.year, state.month);
       render();
